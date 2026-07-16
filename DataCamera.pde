@@ -41,7 +41,7 @@ class CameraData extends GenericData
   static final float TARGET_DISTANCE_MIN = 50;
   static final float TARGET_DISTANCE_MAX = 10000;
   static final float FOCAL_DISTANCE_MIN = 100;
-  static final float FOCAL_DISTANCE_MAX = 20000;
+  static final float FOCAL_DISTANCE_MAX = 4000;
   static final float ORTHO_ZOOM_MIN = 0.05;
   static final float ORTHO_ZOOM_MAX = 20;
 
@@ -243,12 +243,10 @@ class CameraGUI extends GUIPanel
     projection_modes.add("Perspective");
     projection_mode = addRadio("projection_mode", projection_modes);
     float start_pos = xPos;
-    fov = addSlider("fov", "FOV", 10, 120);
+    fov = addSlider("fov", "FOV", 10, 180);
     focal_distance = addSlider("focal_distance", "Focal Distance", CameraData.FOCAL_DISTANCE_MIN, CameraData.FOCAL_DISTANCE_MAX);
     xPos = start_pos;
     ortho_zoom = addSlider("ortho_zoom", "Ortho Zoom", CameraData.ORTHO_ZOOM_MIN, CameraData.ORTHO_ZOOM_MAX);
-  
-
 }
 
   void setGUIValues()
