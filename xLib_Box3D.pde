@@ -1,20 +1,8 @@
-PVector projectBoxPoint(float x, float y, float z)
-{
-  final float iso_x = 0.8660254;
-  final float iso_y = 0.5;
-
-  float projected_x = (x - z) * iso_x;
-  float projected_y = (x + z) * iso_y - y;
-
-  return new PVector(projected_x, projected_y);
-}
-
-
-Polyline makeProjectedEdge(PVector a, PVector b)
+Polyline makeProjectedEdge(PVector a, PVector b, CameraData camera)
 {
   Polyline edge = new Polyline();
-  edge.addPoint(projectBoxPoint(a.x, a.y, a.z));
-  edge.addPoint(projectBoxPoint(b.x, b.y, b.z));
+  edge.addPoint(camera.projectPoint(a));
+  edge.addPoint(camera.projectPoint(b));
   return edge;
 }
 
@@ -115,7 +103,7 @@ class Box3D
     return new PVector(point.x * c - point.y * s, point.x * s + point.y * c, point.z);
   }
 
-  void addWireframe(PolylineGroup group)
+  void addWireframe(PolylineGroup group, CameraData camera)
   {
     PVector[] vertices = getVertices();
 
@@ -127,14 +115,14 @@ class Box3D
 
     for (int i = 0; i < edges.length; i++)
     {
-      group.add(makeProjectedEdge(vertices[edges[i][0]], vertices[edges[i][1]]));
+      group.add(makeProjectedEdge(vertices[edges[i][0]], vertices[edges[i][1]], camera));
     }
   }
 }
 
 
-void addBoxWireframe(PolylineGroup group, float center_x, float center_y, float center_z, float size_x, float size_y, float size_z)
+void addBoxWireframe(PolylineGroup group, CameraData camera, float center_x, float center_y, float center_z, float size_x, float size_y, float size_z)
 {
   Box3D box = new Box3D(center_x, center_y, center_z, size_x, size_y, size_z);
-  box.addWireframe(group);
+  box.addWireframe(group, camera);
 }

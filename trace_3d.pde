@@ -41,12 +41,20 @@ void draw()
   start_draw();
 
   boolean boxes_changed = data.boxes.changed;
-  data.reset_all_changes();
+  boolean camera_changed = data.camera.changed;
+  boolean page_changed   = data.page.changed;
 
   if (boxes_changed)
     buildBoxes();
 
-  buildLinesFromBoxes();
+  if (boxes_changed || camera_changed)
+    buildLinesFromBoxes();
+
+  if (boxes_changed || camera_changed || page_changed)
+    file_ui.updateExportScale(lineGroup.getBoundingBox(data.page.clipping, data.page.clip_width, data.page.clip_height));
+
+  dataGui.update_ui();
+  data.reset_all_changes();
 
   // Debug: draw clipping rect border
   //if (data.page.clipping) {
@@ -99,8 +107,6 @@ void buildLinesFromBoxes()
 
   for (int i = 0; i < boxList.size(); i++)
   {
-    boxList.get(i).addWireframe(lineGroup);
+    boxList.get(i).addWireframe(lineGroup, data.camera);
   }
-
-  file_ui.updateExportScale(lineGroup.getBoundingBox(data.page.clipping, data.page.clip_width, data.page.clip_height));
 }

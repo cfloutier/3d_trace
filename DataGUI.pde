@@ -6,6 +6,7 @@ class DataGUI extends MainPanel
   FileGUI  file_ui;
   StyleGUI style_ui;
   BoxesGUI boxes_ui;
+  CameraGUI camera_ui;
 
   public DataGUI(BoxGridData data)
   {
@@ -13,6 +14,7 @@ class DataGUI extends MainPanel
     file_ui   = new FileGUI(data, true);
     style_ui  = new StyleGUI(data.style);
     boxes_ui  = new BoxesGUI(data.boxes);
+    camera_ui = new CameraGUI(data.camera);
   }
 
   void Init()
@@ -20,9 +22,10 @@ class DataGUI extends MainPanel
     addTab(file_ui);
     addTab(style_ui);
     addTab(boxes_ui);
+    addTab(camera_ui);
 
     super.Init();
 
-    cp5.getTab("Boxes").bringToFront();
+    cp5.getTab("Camera").bringToFront();
   }
 }
