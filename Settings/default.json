@@ -1,0 +1,20 @@
+{
+  "Circle": {
+    "aspect_ratio": 0.8186667561531067,
+    "circle_size": 142.6666717529297,
+    "resolution": 128
+  },
+  "Style": {
+    "backgroundColor": -16777216,
+    "lineColor": -1,
+    "lineWidth": 1.0833333730697632
+  },
+  "Page": {
+    "clipping": true,
+    "clip_width": 800,
+    "margin": 0,
+    "clip_height": 600,
+    "paper_format": 1,
+    "global_scale": 1
+  }
+}
