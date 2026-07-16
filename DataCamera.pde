@@ -11,7 +11,6 @@ class CameraData extends GenericData
   }
 
   int projection_mode = PROJECTION_PERSPECTIVE;
-  boolean table_top_mode = true;
 
   float fov = 45;
   float distance = 900;
@@ -47,7 +46,7 @@ class CameraData extends GenericData
       return new PVector(x, y);
 
     float safe_z = max(0.001, z);
-    float focal = 1.0 / tan(radians(fov) * 0.5);
+    float focal = distance / tan(radians(fov) * 0.5);
     return new PVector(x * focal / safe_z, y * focal / safe_z);
   }
 
@@ -73,24 +72,30 @@ class CameraData extends GenericData
 
   void resetToView(float newYaw, float newPitch)
   {
-    yaw = newYaw;
+    yaw = wrapAngle(newYaw);
     pitch = newPitch;
     markChanged();
   }
 
-  void lookFront()  { resetToView(0, -0.55); }
-  void lookBack()   { resetToView(PI, -0.55); }
-  void lookLeft()   { resetToView(-HALF_PI, -0.55); }
-  void lookRight()  { resetToView(HALF_PI, -0.55); }
+  float wrapAngle(float angle)
+  {
+    while (angle <= -PI) angle += TWO_PI;
+    while (angle > PI) angle -= TWO_PI;
+    return angle;
+  }
+
+  void lookFront()  { resetToView(0, -0.01); }
+  void lookBack()   { resetToView(PI, -0.01); }
+  void lookLeft()   { resetToView(-HALF_PI, -0.01); }
+  void lookRight()  { resetToView(HALF_PI, -0.01); }
   void lookIso()    { resetToView(QUARTER_PI, -0.6); }
-  void lookTop()    { resetToView(0, -1.45); }
+  void lookTop()    { resetToView(0, HALF_PI - 0.001); }
 
   void LoadJson(JSONObject src)
   {
     if (src == null) return;
 
     projection_mode = src.getInt("projection_mode", projection_mode);
-    table_top_mode = src.getBoolean("table_top_mode", table_top_mode);
     fov = src.getFloat("fov", fov);
     distance = src.getFloat("distance", distance);
     yaw = src.getFloat("yaw", yaw);
@@ -104,7 +109,6 @@ class CameraData extends GenericData
   {
     JSONObject dest = new JSONObject();
     dest.setInt("projection_mode", projection_mode);
-    dest.setBoolean("table_top_mode", table_top_mode);
     dest.setFloat("fov", fov);
     dest.setFloat("distance", distance);
     dest.setFloat("yaw", yaw);
@@ -122,7 +126,6 @@ class CameraGUI extends GUIPanel
   CameraData camera;
 
   myRadioButton projection_mode;
-  Toggle table_top_mode;
   Slider fov;
   Slider distance;
   Slider yaw;
@@ -144,26 +147,23 @@ class CameraGUI extends GUIPanel
     addButton("Right").plugTo(this, "lookRight");
     addButton("Iso").plugTo(this, "lookIso");
     addButton("Top").plugTo(this, "lookTop");
-
     nextLine();
 
-    table_top_mode = addToggle("table_top_mode", "Table top", camera);
-    fov = addSlider("fov", "FOV", 10, 120);
-    nextLine();
-    distance = addSlider("distance", "Distance", 100, 3000);
     yaw = addSlider("yaw", "Yaw", -PI, PI);
+    pitch = addSlider("pitch", "Pitch", -HALF_PI + 0.005, HALF_PI - 0.005);
     nextLine();
-    pitch = addSlider("pitch", "Pitch", -HALF_PI + 0.05, HALF_PI - 0.05);
-
+    
     ArrayList<String> projection_modes = new ArrayList<String>();
     projection_modes.add("Ortho");
     projection_modes.add("Perspective");
     projection_mode = addRadio("projection_mode", projection_modes);
+    fov = addSlider("fov", "FOV", 10, 120);
+    distance = addSlider("distance", "Distance", 100, 3000);
+    
   }
 
   void setGUIValues()
   {
-    table_top_mode.setValue(camera.table_top_mode);
     fov.setValue(camera.fov);
     distance.setValue(camera.distance);
     yaw.setValue(camera.yaw);
@@ -180,7 +180,6 @@ class CameraGUI extends GUIPanel
 
   void update_ui()
   {
-    table_top_mode.setValue(camera.table_top_mode);
     fov.setValue(camera.fov);
     distance.setValue(camera.distance);
     yaw.setValue(camera.yaw);
@@ -211,17 +210,8 @@ class CameraGUI extends GUIPanel
     float dx = mouseX - drag_start_mouse_x;
     float dy = mouseY - drag_start_mouse_y;
 
-    camera.yaw = drag_start_yaw + dx * 0.01;
-    if (camera.table_top_mode)
-    {
-      camera.pitch = drag_start_pitch;
-      camera.distance = max(50, drag_start_distance + dy * 2.0);
-    }
-    else
-    {
-      camera.pitch = constrain(drag_start_pitch + dy * 0.01, -HALF_PI + 0.05, HALF_PI - 0.05);
-      camera.distance = drag_start_distance;
-    }
+    camera.yaw = camera.wrapAngle(drag_start_yaw + dx * 0.01);
+    camera.pitch = constrain(drag_start_pitch + dy * 0.01, -HALF_PI + 0.001, HALF_PI - 0.001);
 
     camera.markChanged();
     setGUIValues();
