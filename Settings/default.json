@@ -1,8 +1,8 @@
 {
-  "Circle": {
-    "aspect_ratio": 0.8186667561531067,
-    "circle_size": 142.6666717529297,
-    "resolution": 128
+  "Boxes": {
+    "count": 16,
+    "spacing": 90,
+    "box_height": 120
   },
   "Style": {
     "backgroundColor": -16777216,

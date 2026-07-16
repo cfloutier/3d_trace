@@ -1,17 +1,17 @@
-class CircleLinesData extends DataGlobal
+class BoxGridData extends DataGlobal
 {
   Style style = new Style();
-  DataCircle circle = new DataCircle();
+  DataBoxes boxes = new DataBoxes();
 
-  CircleLinesData()
+  BoxGridData()
   {
     addChapter(style);
-    addChapter(circle);
+    addChapter(boxes);
   }
 
   void reset()
   {
     style.CopyFrom(new Style());
-    circle.CopyFrom(new DataCircle());
+    boxes.CopyFrom(new DataBoxes());
   }
 }

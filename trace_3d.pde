@@ -3,12 +3,13 @@ import processing.pdf.*;
 import processing.dxf.*;
 import processing.svg.*;
 
-CircleLinesData data;
+BoxGridData data;
 DataGUI dataGui;
 
 PGraphics current_graphics;
 ControlP5 cp5;
 
+ArrayList<Box3D> boxList = new ArrayList<Box3D>();
 PolylineGroup lineGroup = new PolylineGroup();
 
 void setup()
@@ -17,7 +18,7 @@ void setup()
   pixelDensity(1);
   surface.setResizable(true);
 
-  data = new CircleLinesData();
+  data = new BoxGridData();
   dataGui = new DataGUI(data);
 
   setupControls();
@@ -39,12 +40,13 @@ void draw()
 {
   start_draw();
 
-  boolean circle_changed = data.circle.changed;
-  boolean page_changed   = data.page.changed;
+  boolean boxes_changed = data.boxes.changed;
   data.reset_all_changes();
 
-  if (circle_changed || page_changed)
-    buildLines();
+  if (boxes_changed)
+    buildBoxes();
+
+  buildLinesFromBoxes();
 
   // Debug: draw clipping rect border
   //if (data.page.clipping) {
@@ -61,27 +63,43 @@ void draw()
   dataGui.draw();
 }
 
-void buildLines()
+void buildBoxes()
+{
+  boxList.clear();
+
+  int total_boxes = max(1, data.boxes.count);
+  int columns = max(1, (int)ceil(sqrt((float)total_boxes)));
+  int rows = max(1, (int)ceil((float)total_boxes / columns));
+
+  float spacing = data.boxes.spacing;
+  float size_x = spacing * 0.35;
+  float size_z = spacing * 0.35;
+  float half_depth = (rows - 1) * spacing * 0.5;
+  float base_center_y = 0;
+  float size_y = data.boxes.box_height;
+
+  for (int index = 0; index < total_boxes; index++)
+  {
+    int col = index % columns;
+    int row = index / columns;
+    int boxes_in_row = min(columns, total_boxes - row * columns);
+
+    float row_half_width = (boxes_in_row - 1) * spacing * 0.5;
+    float center_x = col * spacing - row_half_width;
+    float center_z = row * spacing - half_depth;
+
+    boxList.add(new Box3D(center_x, base_center_y, center_z, size_x, size_y, size_z));
+  }
+}
+
+
+void buildLinesFromBoxes()
 {
   lineGroup.clear();
 
-  int   n  = data.circle.resolution;
-  int   nb = max(1, data.circle.count);
-
-  for (int j = 1; j <= nb; j++)
+  for (int i = 0; i < boxList.size(); i++)
   {
-    float t  = (float)j / nb;                              // 0 (excluded) → 1
-    float r  = t * data.circle.circle_size / 2.0;
-    float rx = r * data.circle.aspect_ratio;
-    float ry = r / data.circle.aspect_ratio;
-
-    Polyline circle = new Polyline();
-    for (int i = 0; i <= n; i++)
-    {
-      float a = TWO_PI * i / n;
-      circle.addPoint(new PVector(cos(a) * rx, sin(a) * ry));
-    }
-    lineGroup.add(circle);
+    boxList.get(i).addWireframe(lineGroup);
   }
 
   file_ui.updateExportScale(lineGroup.getBoundingBox(data.page.clipping, data.page.clip_width, data.page.clip_height));
