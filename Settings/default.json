@@ -1,8 +1,10 @@
 {
-  "Boxes": {
-    "count": 16,
-    "spacing": 90,
-    "box_height": 120
+  "Occlusion": {
+    "sample_step_px": 2,
+    "min_visible_segment_px": 1.2000000476837158,
+    "depth_bias": 0.3499999940395355,
+    "enabled": true,
+    "zbuffer_scale": 1.2000000476837158
   },
   "Style": {
     "backgroundColor": -16777216,
@@ -17,11 +19,21 @@
     "paper_format": 1,
     "global_scale": 1
   },
-  "Occlusion": {
-    "enabled": false,
-    "zbuffer_scale": 0.5,
-    "sample_step_px": 2.0,
-    "depth_bias": 0.01,
-    "min_visible_segment_px": 1.5
+  "Camera": {
+    "target_x": 0,
+    "target_y": 0,
+    "target_distance": 1177.666748046875,
+    "focal_distance": 1177.666748046875,
+    "ortho_zoom": 1,
+    "target_z": 0,
+    "projection_mode": 1,
+    "pitch": -0.5100007057189941,
+    "fov": 120,
+    "yaw": -0.8477954864501953
+  },
+  "Boxes": {
+    "spacing": 90,
+    "box_height": 120,
+    "count": 400
   }
 }

@@ -45,4 +45,13 @@ class DataGUI extends MainPanel
       data.camera.markChanged();
     }
   }
+
+  @Override
+  void mouseWheel(processing.event.MouseEvent event)
+  {
+    if (dragging_panel != null || cp5.isMouseOver())
+      return;
+
+    data.camera.zoomByWheel(event.getCount());
+  }
 }

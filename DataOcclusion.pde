@@ -9,7 +9,7 @@ class DataOcclusion extends GenericData
 
   boolean enabled = false;
 
-  float zbuffer_scale = 0.5;
+  float zbuffer_scale = 1.0;
   float sample_step_px = 2.0;
   float depth_bias = 0.01;
   float min_visible_segment_px = 1.5;
@@ -60,7 +60,7 @@ class OcclusionGUI extends GUIPanel
     enabled = addToggle("enabled", "Enable HLR", occlusion);
     nextLine();
 
-    zbuffer_scale = addSlider("zbuffer_scale", "ZBuffer Scale", 0.1, 2.0);
+    zbuffer_scale = addSlider("zbuffer_scale", "ZBuffer Scale", 1, 4.0);
     sample_step_px = addSlider("sample_step_px", "Sample Step px", 0.5, 8.0);
     nextLine();
     depth_bias = addSlider("depth_bias", "Depth Bias", 0.0, 1.0);
