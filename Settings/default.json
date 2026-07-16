@@ -16,5 +16,12 @@
     "clip_height": 600,
     "paper_format": 1,
     "global_scale": 1
+  },
+  "Occlusion": {
+    "enabled": false,
+    "zbuffer_scale": 0.5,
+    "sample_step_px": 2.0,
+    "depth_bias": 0.01,
+    "min_visible_segment_px": 1.5
   }
 }

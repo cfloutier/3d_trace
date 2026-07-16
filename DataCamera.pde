@@ -185,40 +185,4 @@ class CameraGUI extends GUIPanel
     yaw.setValue(camera.yaw);
     pitch.setValue(camera.pitch);
   }
-
-  boolean mousePressed()
-  {
-    if (cp5.isMouseOver())
-      return false;
-
-    drag_start_mouse_x = mouseX;
-    drag_start_mouse_y = mouseY;
-    drag_start_yaw = camera.yaw;
-    drag_start_pitch = camera.pitch;
-    drag_start_distance = camera.distance;
-    return true;
-  }
-
-  int drag_start_mouse_x;
-  int drag_start_mouse_y;
-  float drag_start_yaw;
-  float drag_start_pitch;
-  float drag_start_distance;
-
-  void mouseDragged()
-  {
-    float dx = mouseX - drag_start_mouse_x;
-    float dy = mouseY - drag_start_mouse_y;
-
-    camera.yaw = camera.wrapAngle(drag_start_yaw + dx * 0.01);
-    camera.pitch = constrain(drag_start_pitch + dy * 0.01, -HALF_PI + 0.001, HALF_PI - 0.001);
-
-    camera.markChanged();
-    setGUIValues();
-  }
-
-  void mouseReleased()
-  {
-    camera.markChanged();
-  }
 }

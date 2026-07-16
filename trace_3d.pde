@@ -12,6 +12,9 @@ ControlP5 cp5;
 ArrayList<Box3D> boxList = new ArrayList<Box3D>();
 PolylineGroup lineGroup = new PolylineGroup();
 
+int last_occlusion_debug_ms = -100000;
+boolean occlusion_placeholder_notice_printed = false;
+
 void setup()
 {
   size(1200, 800);
@@ -42,15 +45,37 @@ void draw()
 
   boolean boxes_changed = data.boxes.changed;
   boolean camera_changed = data.camera.changed;
+  boolean occlusion_changed = data.occlusion.changed;
   boolean page_changed   = data.page.changed;
+
+  if (occlusion_changed)
+  {
+    println("[Occlusion] enabled=" + data.occlusion.enabled +
+      " zbuffer_scale=" + nf(data.occlusion.zbuffer_scale, 1, 2) +
+      " sample_step_px=" + nf(data.occlusion.sample_step_px, 1, 2) +
+      " depth_bias=" + nf(data.occlusion.depth_bias, 1, 4) +
+      " min_visible_segment_px=" + nf(data.occlusion.min_visible_segment_px, 1, 2));
+    occlusion_placeholder_notice_printed = false;
+  }
 
   if (boxes_changed)
     buildBoxes();
 
-  if (boxes_changed || camera_changed)
+  if (boxes_changed || camera_changed || occlusion_changed)
+  {
+    if (millis() - last_occlusion_debug_ms > 250)
+    {
+      println("[Render] rebuild lines | boxes_changed=" + boxes_changed +
+        " camera_changed=" + camera_changed +
+        " occlusion_changed=" + occlusion_changed +
+        " occlusion_enabled=" + data.occlusion.enabled +
+        " boxes=" + boxList.size());
+      last_occlusion_debug_ms = millis();
+    }
     buildLinesFromBoxes();
+  }
 
-  if (boxes_changed || camera_changed || page_changed)
+  if (boxes_changed || camera_changed || occlusion_changed || page_changed)
     file_ui.updateExportScale(lineGroup.getBoundingBox(data.page.clipping, data.page.clip_width, data.page.clip_height));
 
   dataGui.update_ui();
@@ -103,6 +128,33 @@ void buildBoxes()
 
 void buildLinesFromBoxes()
 {
+  if (data.occlusion.enabled)
+  {
+    println("[Render] using occlusion path");
+    buildOccludedLinesFromBoxes();
+    return;
+  }
+
+  println("[Render] using normal wireframe path");
+
+  lineGroup.clear();
+
+  for (int i = 0; i < boxList.size(); i++)
+  {
+    boxList.get(i).addWireframe(lineGroup, data.camera);
+  }
+}
+
+
+void buildOccludedLinesFromBoxes()
+{
+  // Placeholder path: options and wiring are active, full HLR will be implemented next.
+  if (!occlusion_placeholder_notice_printed)
+  {
+    println("[Occlusion] HLR placeholder active: currently same output as normal wireframe.");
+    occlusion_placeholder_notice_printed = true;
+  }
+
   lineGroup.clear();
 
   for (int i = 0; i < boxList.size(); i++)
