@@ -7,8 +7,23 @@ Polyline makeProjectedEdge(PVector a, PVector b, CameraData camera)
 }
 
 
-class Box3D
+class Box3D extends Mesh
 {
+  final int[][] EDGE_IDX = {
+    { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 },
+    { 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 },
+    { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 }
+  };
+
+  final int[][] TRI_IDX = {
+    { 0, 1, 2 }, { 0, 2, 3 },
+    { 4, 6, 5 }, { 4, 7, 6 },
+    { 0, 5, 1 }, { 0, 4, 5 },
+    { 3, 2, 6 }, { 3, 6, 7 },
+    { 0, 3, 7 }, { 0, 7, 4 },
+    { 1, 5, 6 }, { 1, 6, 2 }
+  };
+
   float center_x;
   float center_y;
   float center_z;
@@ -103,20 +118,42 @@ class Box3D
     return new PVector(point.x * c - point.y * s, point.x * s + point.y * c, point.z);
   }
 
+  ProjectedPoint[] getProjectedVertices(CameraData camera, CameraFrame frame)
+  {
+    PVector[] vertices = getVertices();
+    ProjectedPoint[] projected = new ProjectedPoint[vertices.length];
+
+    for (int i = 0; i < vertices.length; i++)
+      projected[i] = camera.projectPointWithDepth(vertices[i], frame);
+
+    return projected;
+  }
+
+  @Override
   void addWireframe(PolylineGroup group, CameraData camera)
   {
     PVector[] vertices = getVertices();
 
-    int[][] edges = {
-      { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 },
-      { 4, 5 }, { 5, 6 }, { 6, 7 }, { 7, 4 },
-      { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 }
-    };
-
-    for (int i = 0; i < edges.length; i++)
+    for (int i = 0; i < EDGE_IDX.length; i++)
     {
-      group.add(makeProjectedEdge(vertices[edges[i][0]], vertices[edges[i][1]], camera));
+      group.add(makeProjectedEdge(vertices[EDGE_IDX[i][0]], vertices[EDGE_IDX[i][1]], camera));
     }
+  }
+
+  @Override
+  void appendProjectedOcclusionGeometry(
+    ArrayList<EdgeProjected> edges,
+    ArrayList<TriangleProjected> triangles,
+    CameraData camera,
+    CameraFrame frame)
+  {
+    ProjectedPoint[] p = getProjectedVertices(camera, frame);
+
+    for (int i = 0; i < EDGE_IDX.length; i++)
+      edges.add(new EdgeProjected(p[EDGE_IDX[i][0]], p[EDGE_IDX[i][1]]));
+
+    for (int i = 0; i < TRI_IDX.length; i++)
+      triangles.add(new TriangleProjected(p[TRI_IDX[i][0]], p[TRI_IDX[i][1]], p[TRI_IDX[i][2]]));
   }
 }
 

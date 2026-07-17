@@ -24,6 +24,7 @@ Au démarrage, les valeurs sont chargées depuis Settings/default.json.
 ## Interaction utilisateur
 
 - Drag souris sur le canvas: orbite caméra (yaw, pitch).
+- Drag clic droit sur le canvas: déplace la target caméra (pan).
 - Molette souris sur le canvas:
 - Mode Perspective: agit sur target_distance (distance camera-target).
 - Mode Ortho: agit sur ortho_zoom.
@@ -52,7 +53,7 @@ Comportement UI conditionnel:
 - spacing: espacement grille.
 - box_height: hauteur de boite.
 
-La géométrie des boites est mise en cache dans boxList et n est reconstruite que si Boxes change.
+La géométrie des meshes est mise en cache dans meshList (actuellement des boites) et n est reconstruite que si Boxes change.
 
 ## Occlusion (HLR)
 
@@ -79,11 +80,11 @@ Fichiers principaux:
 - xLib_Box3D.pde: primitive Box3D et wireframe.
 
 Objets de travail:
-- boxList: cache des Box3D.
+- meshList: cache des Mesh (actuellement des Box3D).
 - lineGroup: géométrie 2D finale affichée/exportée.
 
 Règle de recalcul:
-- Boxes change: rebuild boxList puis lignes.
+- Boxes change: rebuild meshList puis lignes.
 - Camera change: rebuild lignes seulement.
 - Occlusion change: rebuild lignes seulement.
 
@@ -112,7 +113,7 @@ Contexte minimal à lire en premier:
 
 Checklist avant modification:
 1. Identifier si le changement touche la géométrie (Boxes) ou seulement la projection (Camera/Occlusion).
-2. Respecter le cache boxList, ne pas reconstruire les boites pour un simple mouvement caméra.
+2. Respecter le cache meshList, ne pas reconstruire les meshes pour un simple mouvement caméra.
 3. Vérifier les flags changed pour éviter les recalculs inutiles.
 4. Si un paramètre est ajouté, le brancher dans:
 - modèle data

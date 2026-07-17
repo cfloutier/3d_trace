@@ -142,6 +142,29 @@ class CameraData extends GenericData
       setTargetDistance(target_distance * factor);
   }
 
+  void panTargetByScreenDelta(float dxPixels, float dyPixels, float viewScale)
+  {
+    CameraFrame frame = buildFrame();
+    float safeViewScale = max(1e-6, viewScale);
+
+    // Convert screen-space drag (pixels) into world-space translation
+    // in the camera right/up plane.
+    float worldPerPixel;
+    if (projection_mode == PROJECTION_ORTHO)
+      worldPerPixel = 1.0 / max(1e-6, ortho_zoom * safeViewScale);
+    else
+      worldPerPixel = target_distance / max(1e-6, frame.focal * safeViewScale);
+
+    PVector deltaRight = PVector.mult(frame.right, -dxPixels * worldPerPixel);
+    PVector deltaUp = PVector.mult(frame.up, -dyPixels * worldPerPixel);
+    PVector delta = PVector.add(deltaRight, deltaUp);
+
+    target_x += delta.x;
+    target_y += delta.y;
+    target_z += delta.z;
+    markChanged();
+  }
+
   void setOrthoZoom(float newZoom)
   {
     ortho_zoom = constrain(newZoom, ORTHO_ZOOM_MIN, ORTHO_ZOOM_MAX);

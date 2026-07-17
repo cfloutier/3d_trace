@@ -9,36 +9,10 @@ DataGUI dataGui;
 PGraphics current_graphics;
 ControlP5 cp5;
 
-ArrayList<Box3D> boxList = new ArrayList<Box3D>();
+ArrayList<Mesh> meshList = new ArrayList<Mesh>();
 PolylineGroup lineGroup = new PolylineGroup();
 
 int last_occlusion_debug_ms = -100000;
-
-class EdgeProjected
-{
-  ProjectedPoint a;
-  ProjectedPoint b;
-
-  EdgeProjected(ProjectedPoint a, ProjectedPoint b)
-  {
-    this.a = a;
-    this.b = b;
-  }
-}
-
-class TriangleProjected
-{
-  ProjectedPoint a;
-  ProjectedPoint b;
-  ProjectedPoint c;
-
-  TriangleProjected(ProjectedPoint a, ProjectedPoint b, ProjectedPoint c)
-  {
-    this.a = a;
-    this.b = b;
-    this.c = c;
-  }
-}
 
 void setup()
 {
@@ -93,10 +67,10 @@ void draw()
       //   " camera_changed=" + camera_changed +
       //   " occlusion_changed=" + occlusion_changed +
       //   " occlusion_enabled=" + data.occlusion.enabled +
-      //   " boxes=" + boxList.size());
+      //   " meshes=" + meshList.size());
       last_occlusion_debug_ms = millis();
     }
-    buildLinesFromBoxes();
+    buildLinesFromMeshes();
   }
 
   if (boxes_changed || camera_changed || occlusion_changed || page_changed)
@@ -122,7 +96,7 @@ void draw()
 
 void buildBoxes()
 {
-  boxList.clear();
+  meshList.clear();
 
   int total_boxes = max(1, data.boxes.count);
   int columns = max(1, (int)ceil(sqrt((float)total_boxes)));
@@ -145,17 +119,17 @@ void buildBoxes()
     float center_x = col * spacing - row_half_width;
     float center_z = row * spacing - half_depth;
 
-    boxList.add(new Box3D(center_x, base_center_y, center_z, size_x, size_y, size_z));
+    meshList.add(new Box3D(center_x, base_center_y, center_z, size_x, size_y, size_z));
   }
 }
 
 
-void buildLinesFromBoxes()
+void buildLinesFromMeshes()
 {
   if (data.occlusion.enabled)
   {
     // println("[Render] using occlusion path");
-    buildOccludedLinesFromBoxes();
+    buildOccludedLinesFromMeshes();
     return;
   }
 
@@ -163,18 +137,18 @@ void buildLinesFromBoxes()
 
   lineGroup.clear();
 
-  for (int i = 0; i < boxList.size(); i++)
+  for (int i = 0; i < meshList.size(); i++)
   {
-    boxList.get(i).addWireframe(lineGroup, data.camera);
+    meshList.get(i).addWireframe(lineGroup, data.camera);
   }
 }
 
 
-void buildOccludedLinesFromBoxes()
+void buildOccludedLinesFromMeshes()
 {
   lineGroup.clear();
 
-  if (boxList.size() == 0)
+  if (meshList.size() == 0)
     return;
 
   CameraFrame frame = data.camera.buildFrame();
@@ -182,36 +156,9 @@ void buildOccludedLinesFromBoxes()
   ArrayList<EdgeProjected> edges = new ArrayList<EdgeProjected>();
   ArrayList<TriangleProjected> triangles = new ArrayList<TriangleProjected>();
 
-  final int[][] EDGE_IDX = {
-    {0, 1}, {1, 2}, {2, 3}, {3, 0},
-    {4, 5}, {5, 6}, {6, 7}, {7, 4},
-    {0, 4}, {1, 5}, {2, 6}, {3, 7}
-  };
-
-  final int[][] TRI_IDX = {
-    {0, 1, 2}, {0, 2, 3},
-    {4, 6, 5}, {4, 7, 6},
-    {0, 5, 1}, {0, 4, 5},
-    {3, 2, 6}, {3, 6, 7},
-    {0, 3, 7}, {0, 7, 4},
-    {1, 5, 6}, {1, 6, 2}
-  };
-
-  for (int b = 0; b < boxList.size(); b++)
+  for (int i = 0; i < meshList.size(); i++)
   {
-    PVector[] v = boxList.get(b).getVertices();
-    ProjectedPoint[] p = new ProjectedPoint[8];
-
-    for (int i = 0; i < 8; i++)
-    {
-      p[i] = data.camera.projectPointWithDepth(v[i], frame);
-    }
-
-    for (int i = 0; i < EDGE_IDX.length; i++)
-      edges.add(new EdgeProjected(p[EDGE_IDX[i][0]], p[EDGE_IDX[i][1]]));
-
-    for (int i = 0; i < TRI_IDX.length; i++)
-      triangles.add(new TriangleProjected(p[TRI_IDX[i][0]], p[TRI_IDX[i][1]], p[TRI_IDX[i][2]]));
+    meshList.get(i).appendProjectedOcclusionGeometry(edges, triangles, data.camera, frame);
   }
 
   float[] domain = getOcclusionDomain();
@@ -235,7 +182,7 @@ void buildOccludedLinesFromBoxes()
 
   if (millis() - last_occlusion_debug_ms > 250)
   {
-    // println("[Occlusion] boxes=" + boxList.size() + " edges=" + edges.size() + " tris=" + triangles.size() +
+    // println("[Occlusion] meshes=" + meshList.size() + " edges=" + edges.size() + " tris=" + triangles.size() +
     //   " zbuf=" + zW + "x" + zH + " kept_segments=" + kept +
     //   " domain=[" + nf(minX, 1, 1) + "," + nf(maxX, 1, 1) + "]x[" + nf(minY, 1, 1) + "," + nf(maxY, 1, 1) + "]");
     last_occlusion_debug_ms = millis();

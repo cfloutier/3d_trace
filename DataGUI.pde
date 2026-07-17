@@ -37,12 +37,22 @@ class DataGUI extends MainPanel
   {
     super.mouseDragged();
 
-    // Orbit camera only when dragging the canvas, not GUI widgets/tabs.
+    // Camera interactions apply only when dragging the canvas, not GUI widgets/tabs.
     if (dragging_panel == null && !cp5.isMouseOver())
     {
-      data.camera.yaw = data.camera.wrapAngle(data.camera.yaw + (mouseX - pmouseX) * 0.01);
-      data.camera.pitch = constrain(data.camera.pitch + (mouseY - pmouseY) * 0.01, -HALF_PI + 0.001, HALF_PI - 0.001);
-      data.camera.markChanged();
+      float dx = mouseX - pmouseX;
+      float dy = mouseY - pmouseY;
+
+      if (mouseButton == RIGHT)
+      {
+        data.camera.panTargetByScreenDelta(dx, dy, data.page.global_scale);
+      }
+      else
+      {
+        data.camera.yaw = data.camera.wrapAngle(data.camera.yaw + dx * 0.01);
+        data.camera.pitch = constrain(data.camera.pitch + dy * 0.01, -HALF_PI + 0.001, HALF_PI - 0.001);
+        data.camera.markChanged();
+      }
     }
   }
 
