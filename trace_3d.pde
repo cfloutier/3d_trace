@@ -222,8 +222,10 @@ void buildOccludedLinesFromBoxes()
 
   int zW = max(64, (int)(width * data.occlusion.zbuffer_scale));
   int zH = max(64, (int)(height * data.occlusion.zbuffer_scale));
+  boolean useInvDepth = data.occlusion.use_projection_depth_metric
+    && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE;
   double[] zbuf = new double[zW * zH];
-  for (int i = 0; i < zbuf.length; i++) zbuf[i] = -Double.MAX_VALUE;
+  for (int i = 0; i < zbuf.length; i++) zbuf[i] = useInvDepth ? -Double.MAX_VALUE : Double.MAX_VALUE;
 
   rasterizeTrianglesToDepthBuffer(triangles, zbuf, zW, zH, minX, maxX, minY, maxY);
 
@@ -315,12 +317,20 @@ void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, dou
             continue;
         }
 
-        // Keep z-buffer write metric aligned with the visibility comparison mode.
-        double depthMetric = depthMetricFromZ(z);
-
         int idx = px + py * zW;
-        if (depthMetric > zbuf[idx])
-          zbuf[idx] = depthMetric;
+        if (data.occlusion.use_projection_depth_metric
+          && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
+        {
+          double invz = 1.0 / Math.max(1e-9, z);
+          if (invz > zbuf[idx])
+            zbuf[idx] = invz;
+        }
+        else
+        {
+          // Legacy path: store z and keep nearest with min operator.
+          if (z < zbuf[idx])
+            zbuf[idx] = z;
+        }
       }
     }
   }
@@ -433,8 +443,11 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW
   if (ix < 0 || ix >= zW || iy < 0 || iy >= zH)
     return true;
 
-  // Conservative edge-friendly test: use the nearest depth metric in a 3x3 neighborhood
-  // to avoid falsely hiding boundary lines at low z-buffer resolutions.
+  boolean useInvDepth = data.occlusion.use_projection_depth_metric
+    && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE;
+
+  // Conservative edge-friendly test: use the max neighborhood value.
+  // In legacy z-space this is the farthest sample; in 1/z space this is the nearest sample.
   double neighborhoodMax = -Double.MAX_VALUE;
   for (int oy = -1; oy <= 1; oy++)
   {
@@ -445,8 +458,16 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW
       int px = ix + ox;
       if (px < 0 || px >= zW) continue;
       double zv = zbuf[px + py * zW];
-      if (zv < Double.MAX_VALUE && zv > neighborhoodMax)
-        neighborhoodMax = zv;
+      if (useInvDepth)
+      {
+        if (zv > neighborhoodMax)
+          neighborhoodMax = zv;
+      }
+      else
+      {
+        if (zv < Double.MAX_VALUE && zv > neighborhoodMax)
+          neighborhoodMax = zv;
+      }
     }
   }
 
@@ -455,28 +476,16 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW
 
   double zd = (double)z;
   double effectiveBiasZ = Math.max((double)depthBias, 0.0025 * zd);
-  double sampleMetric = depthMetricFromZ(zd);
-  double metricBias = depthMetricBiasFromZ(zd, effectiveBiasZ);
-  return sampleMetric >= neighborhoodMax - metricBias;
-}
 
-double depthMetricFromZ(double z)
-{
-  double safeZ = Math.max(1e-9, z);
-  if (data.occlusion.use_projection_depth_metric && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
-    return 1.0 / safeZ;
+  if (useInvDepth)
+  {
+    double invz = 1.0 / Math.max(1e-9, zd);
+    double metricBias = effectiveBiasZ / Math.max(1e-18, zd * zd);
+    return invz >= neighborhoodMax - metricBias;
+  }
 
-  // Legacy metric and ortho: smaller z means nearer. Negate to keep "nearer is larger" ordering.
-  return -safeZ;
-}
-
-double depthMetricBiasFromZ(double z, double biasZ)
-{
-  double safeZ = Math.max(1e-9, z);
-  if (data.occlusion.use_projection_depth_metric && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
-    return biasZ / (safeZ * safeZ);
-
-  return biasZ;
+  // Legacy exact behavior.
+  return zd <= neighborhoodMax + effectiveBiasZ;
 }
 
 
