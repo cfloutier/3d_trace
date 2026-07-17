@@ -1,12 +1,20 @@
 String get_xlib_version()
 {
-  return "3.5.0";
+  return "3.6.0";
 }
 
 
 /*
 
  # CHANGELOG
+
+ ## [3.6.0] - 2026-07-17
+ - xLib_Mesh: nouveau fichier avec Mesh (classe abstraite) + EdgeProjected + TriangleProjected
+ - xLib_Box3D: nouveau fichier, Box3D herite de Mesh et encapsule sa decomposition edges/triangles
+ - xLib_Camera3D: nouveau fichier avec CameraFrame, ProjectedPoint et interface CameraProjector3D
+ - xLib_CameraData: nouveau fichier, CameraData implemente CameraProjector3D
+ - xLib_MainPanel: ajout de mouseWheel(event) en override optionnel + forwarding global mouseWheel vers dataGui
+ - sync-tools/projects.ps1: ajout de trace_3d dans la liste des projets synchronises
 
  ## [3.5.0] - 2026-06-04
  - xLib_GenericData: getDeclaredFields() / getDeclaredField() remplacés par getAllInstanceFields() / findFieldInHierarchy()

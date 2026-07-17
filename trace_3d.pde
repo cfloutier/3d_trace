@@ -96,31 +96,7 @@ void draw()
 
 void buildBoxes()
 {
-  meshList.clear();
-
-  int total_boxes = max(1, data.boxes.count);
-  int columns = max(1, (int)ceil(sqrt((float)total_boxes)));
-  int rows = max(1, (int)ceil((float)total_boxes / columns));
-
-  float spacing = data.boxes.spacing;
-  float size_x = spacing * 0.35;
-  float size_z = spacing * 0.35;
-  float half_depth = (rows - 1) * spacing * 0.5;
-  float base_center_y = 0;
-  float size_y = data.boxes.box_height;
-
-  for (int index = 0; index < total_boxes; index++)
-  {
-    int col = index % columns;
-    int row = index / columns;
-    int boxes_in_row = min(columns, total_boxes - row * columns);
-
-    float row_half_width = (boxes_in_row - 1) * spacing * 0.5;
-    float center_x = col * spacing - row_half_width;
-    float center_z = row * spacing - half_depth;
-
-    meshList.add(new Box3D(center_x, base_center_y, center_z, size_x, size_y, size_z));
-  }
+  data.boxes.createMeshes(meshList);
 }
 
 

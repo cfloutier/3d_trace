@@ -21,19 +21,30 @@
   },
   "Camera": {
     "target_x": 0,
-    "target_y": 0,
     "target_distance": 1177.666748046875,
+    "target_y": 0,
     "focal_distance": 1177.666748046875,
-    "ortho_zoom": 1,
     "target_z": 0,
     "projection_mode": 1,
+    "ortho_zoom": 1,
     "pitch": -0.5100007057189941,
     "fov": 120,
     "yaw": -0.8477954864501953
   },
   "Boxes": {
-    "spacing": 90,
-    "box_height": 120,
-    "count": 400
+    "Tube": {
+      "spacing": 90,
+      "radial_count": 24,
+      "box_height": 120,
+      "height_span": 600,
+      "radius": 449.9999694824219,
+      "levels": 8
+    },
+    "Grid": {
+      "spacing": 90,
+      "box_height": 120,
+      "count": 400
+    },
+    "distribution_mode": 0
   }
 }
