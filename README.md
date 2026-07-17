@@ -1,94 +1,111 @@
 # trace_3d
 
-Sketch Processing pour générer un champ de Box3D projeté en 2D (wireframe), avec caméra orbitale, mode perspective ou orthographique, et option de masquage des lignes cachées (HLR software z-buffer).
+Sketch Processing pour generer un champ de Box3D projete en 2D (wireframe), avec camera orbitale, projection Ortho/Perspective, HLR logiciel (z-buffer), et export SVG direct.
 
 ## Objectif
 
-- Produire des tracés 2D propres à partir d une scène 3D simple.
-- Garder une interaction fluide même avec beaucoup de boites.
-- Permettre un export vectoriel via la pile xLib déjà incluse dans le projet.
+- Produire des traces 2D propres a partir d une scene 3D simple.
+- Garder une interaction fluide avec un grand nombre de meshes.
+- Permettre des exports vectoriels fiables (affichage et export coherents).
 
 ## Demarrage rapide
 
 1. Ouvrir trace_3d.pde dans Processing.
 2. Lancer le sketch.
-3. Ajuster les paramètres via les onglets:
-- Boxes
+3. Ajuster les parametres via les onglets:
+- Meshes
 - Camera
 - Occlusion
 - Style
 - Files
 
-Au démarrage, les valeurs sont chargées depuis Settings/default.json.
+Au demarrage, les valeurs sont chargees depuis Settings/default.json.
 
 ## Interaction utilisateur
 
-- Drag souris sur le canvas: orbite caméra (yaw, pitch).
-- Drag clic droit sur le canvas: déplace la target caméra (pan).
+- Drag souris sur le canvas: orbite camera (yaw, pitch).
+- Drag clic droit sur le canvas: deplace la cible camera (pan).
 - Molette souris sur le canvas:
-- Mode Perspective: agit sur target_distance (distance camera-target).
-- Mode Ortho: agit sur ortho_zoom.
+- Perspective: agit sur target_distance.
+- Ortho: agit sur ortho_zoom.
 - Boutons Camera: Front, Back, Left, Right, Iso, Top.
 
-Important: les interactions caméra sont désactivées si la souris est au-dessus de l interface GUI.
+Important: les interactions camera sont desactivees si la souris est au-dessus de la GUI.
 
-## Paramètres Camera
+## Parametres Meshes
 
-- target_x, target_y, target_z: position de la cible caméra.
-- target_distance: rayon d orbite camera autour de la cible.
-- projection_mode:
-- 0 = Ortho
-- 1 = Perspective
-- fov: angle de champ perspective.
-- focal_distance: force de perspective (distance focale logicielle).
-- ortho_zoom: zoom utilisé uniquement en mode Ortho.
+L onglet Meshes pilote la distribution des Box3D via un mode actif:
+- distribution_mode: Grid ou Tube.
+- random_seed: seed global partage par toutes les distributions.
 
-Comportement UI conditionnel:
-- En Ortho: affiche ortho_zoom, cache fov et focal_distance.
-- En Perspective: affiche fov et focal_distance, cache ortho_zoom.
+Mode Grid:
+- count
+- spacing
+- box_height
 
-## Paramètres Boxes
+Mode Tube (aleatoire):
+- radial_count
+- levels
+- radius_min / radius_max
+- base_y_min / base_y_max
+- box_length_min / box_length_max
+- spacing (section X/Z des boxes)
 
-- count: nombre de boites.
-- spacing: espacement grille.
-- box_height: hauteur de boite.
-
-La géométrie des meshes est mise en cache dans meshList (actuellement des boites) et n est reconstruite que si Boxes change.
+La geometrie 3D est mise en cache dans meshList et n est reconstruite que si Meshes change.
 
 ## Occlusion (HLR)
 
 Quand Occlusion.enabled est actif, le rendu passe par:
 1. Projection des sommets 3D.
 2. Rasterization des faces dans un depth buffer.
-3. Echantillonnage des arêtes pour ne garder que les segments visibles.
+3. Echantillonnage des aretes pour ne garder que les segments visibles.
 
-Paramètres:
-- zbuffer_scale: résolution relative du z-buffer (qualité/perf).
-- sample_step_px: pas d échantillonnage des arêtes.
-- depth_bias: tolérance de comparaison profondeur.
+Parametres:
+- zbuffer_scale: resolution relative du z-buffer.
+- sample_step_px: pas d echantillonnage des aretes.
+- depth_bias: tolerance de comparaison profondeur.
 - min_visible_segment_px: seuil anti-segments parasites.
+
+Notes:
+- En perspective, la profondeur des aretes est echantillonnee en interpolation 1/z (plus stable sur longues lignes).
+- Avec clipping actif, les echantillons hors domaine de clipping sont traites comme non visibles.
+
+## Export SVG
+
+Deux options existent dans l onglet Files:
+- SVG direct (recommande): writer custom, plus fiable pour le plotter.
+- SVG (Processing): fallback legacy via renderer Processing.
+
+Le writer direct:
+- applique le clipping dans l espace dessin,
+- centre ensuite l export,
+- utilise une bbox coherente avec l etat de clipping.
 
 ## Architecture du code
 
 Fichiers principaux:
-- trace_3d.pde: boucle principale, génération grille, pipeline de projection, HLR.
-- DataGlobal.pde: agrégation des chapitres de données.
-- DataBoxes.pde: paramètres de grille + UI Boxes.
-- DataCamera.pde: modèle caméra, projection, sérialisation JSON, UI Camera.
-- DataOcclusion.pde: paramètres HLR + UI Occlusion.
-- DataGUI.pde: tabs GUI + interactions souris (drag, molette).
-- xLib_Box3D.pde: primitive Box3D et wireframe.
+- trace_3d.pde: boucle principale, orchestration recalculs/rendu.
+- LineBuilder.pde: generation des lignes 2D (normal + occlusion).
+- MeshDistribution.pde: data+UI du mode Meshes et routing Grid/Tube.
+- GridDistribution.pde: generation mode Grid.
+- TubeDistribution.pde: generation mode Tube aleatoire.
+- DataGlobal.pde: aggregation des chapitres de donnees.
+- DataGUI.pde: tabs GUI + interactions souris.
+- DataOcclusion.pde: parametres HLR + UI Occlusion.
+- xLib_Mesh.pde: abstraction Mesh + primitives projetees.
+- xLib_Box3D.pde: decomposition d une box en aretes/faces.
+- xLib_Camera3D.pde / xLib_CameraData.pde: projection camera + UI.
 
 Objets de travail:
-- meshList: cache des Mesh (actuellement des Box3D).
-- lineGroup: géométrie 2D finale affichée/exportée.
+- meshList: cache des Mesh.
+- lineGroup: geometrie 2D finale affichee/exportee.
 
-Règle de recalcul:
-- Boxes change: rebuild meshList puis lignes.
+Regle de recalcul:
+- Meshes change: rebuild meshList puis lignes.
 - Camera change: rebuild lignes seulement.
 - Occlusion change: rebuild lignes seulement.
 
-## Réglages persistés
+## Reglages persistes
 
 Fichier principal:
 - Settings/default.json
@@ -100,41 +117,12 @@ Chapitres JSON attendus:
 - Boxes
 - Occlusion
 
-Si un champ est absent, la valeur par défaut du code est utilisée.
-
-## Guide reprise rapide pour une IA
-
-Contexte minimal à lire en premier:
-1. trace_3d.pde
-2. DataCamera.pde
-3. DataOcclusion.pde
-4. DataGUI.pde
-5. Settings/default.json
-
-Checklist avant modification:
-1. Identifier si le changement touche la géométrie (Boxes) ou seulement la projection (Camera/Occlusion).
-2. Respecter le cache meshList, ne pas reconstruire les meshes pour un simple mouvement caméra.
-3. Vérifier les flags changed pour éviter les recalculs inutiles.
-4. Si un paramètre est ajouté, le brancher dans:
-- modèle data
-- LoadJson/SaveJson
-- UI (slider/toggle)
-- Settings/default.json
-
-Zones sensibles:
-- DataCamera.pde: cohérence entre fov, focal_distance, target_distance, ortho_zoom.
-- trace_3d.pde: précision/performance du HLR.
-- DataGUI.pde: ne pas casser la distinction canvas versus GUI pour les interactions souris.
+Si un champ est absent, la valeur par defaut du code est utilisee.
 
 ## Notes xLib
 
-Le projet embarque des fichiers xLib_*.pde copiés localement. Les évolutions globales xLib se gèrent via le workflow de synchronisation du dépôt processing_xlib; éviter de modifier le dépôt central directement hors workflow prévu.
+Le projet embarque des fichiers xLib_*.pde copies localement. Les evolutions globales xLib se gerent via le workflow de synchronisation du depot processing_xlib.
 
-## Etat actuel conseillé pour tests
+## TODO
 
-Le preset fourni dans Settings/default.json utilise:
-- count élevé (400)
-- occlusion active
-- projection perspective
-
-C est utile pour tester rapidement qualité HLR et performance.
+- Gerer correctement les intersections entre boxes en ajoutant des edges supplementaires pour decouper les lignes aux zones d intersection.
