@@ -8,6 +8,7 @@ class DataOcclusion extends GenericData
   }
 
   boolean enabled = false;
+  boolean use_projection_depth_metric = true;
 
   float zbuffer_scale = 1.0;
   float sample_step_px = 2.0;
@@ -18,6 +19,7 @@ class DataOcclusion extends GenericData
   {
     if (src == null) return;
     enabled = src.getBoolean("enabled", enabled);
+    use_projection_depth_metric = src.getBoolean("use_projection_depth_metric", use_projection_depth_metric);
     zbuffer_scale = src.getFloat("zbuffer_scale", zbuffer_scale);
     sample_step_px = src.getFloat("sample_step_px", sample_step_px);
     depth_bias = src.getFloat("depth_bias", depth_bias);
@@ -28,6 +30,7 @@ class DataOcclusion extends GenericData
   {
     JSONObject dest = new JSONObject();
     dest.setBoolean("enabled", enabled);
+    dest.setBoolean("use_projection_depth_metric", use_projection_depth_metric);
     dest.setFloat("zbuffer_scale", zbuffer_scale);
     dest.setFloat("sample_step_px", sample_step_px);
     dest.setFloat("depth_bias", depth_bias);
@@ -42,6 +45,7 @@ class OcclusionGUI extends GUIPanel
   DataOcclusion occlusion;
 
   Toggle enabled;
+  Toggle use_projection_depth_metric;
   Slider zbuffer_scale;
   Slider sample_step_px;
   Slider depth_bias;
@@ -58,6 +62,7 @@ class OcclusionGUI extends GUIPanel
     super.Init();
 
     enabled = addToggle("enabled", "Enable HLR", occlusion);
+    use_projection_depth_metric = addToggle("use_projection_depth_metric", "Use Perspective 1/Z Metric", occlusion);
     nextLine();
 
     zbuffer_scale = addSlider("zbuffer_scale", "ZBuffer Scale", 1, 4.0);
@@ -70,6 +75,7 @@ class OcclusionGUI extends GUIPanel
   void setGUIValues()
   {
     enabled.setValue(occlusion.enabled);
+    use_projection_depth_metric.setValue(occlusion.use_projection_depth_metric);
     zbuffer_scale.setValue(occlusion.zbuffer_scale);
     sample_step_px.setValue(occlusion.sample_step_px);
     depth_bias.setValue(occlusion.depth_bias);
@@ -78,6 +84,7 @@ class OcclusionGUI extends GUIPanel
 
   void update_ui()
   {
+    use_projection_depth_metric.setValue(occlusion.use_projection_depth_metric);
     zbuffer_scale.setValue(occlusion.zbuffer_scale);
     sample_step_px.setValue(occlusion.sample_step_px);
     depth_bias.setValue(occlusion.depth_bias);

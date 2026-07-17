@@ -223,7 +223,7 @@ void buildOccludedLinesFromBoxes()
   int zW = max(64, (int)(width * data.occlusion.zbuffer_scale));
   int zH = max(64, (int)(height * data.occlusion.zbuffer_scale));
   double[] zbuf = new double[zW * zH];
-  for (int i = 0; i < zbuf.length; i++) zbuf[i] = Double.MAX_VALUE;
+  for (int i = 0; i < zbuf.length; i++) zbuf[i] = -Double.MAX_VALUE;
 
   rasterizeTrianglesToDepthBuffer(triangles, zbuf, zW, zH, minX, maxX, minY, maxY);
 
@@ -315,9 +315,12 @@ void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, dou
             continue;
         }
 
+        // Keep z-buffer write metric aligned with the visibility comparison mode.
+        double depthMetric = depthMetricFromZ(z);
+
         int idx = px + py * zW;
-        if (z < zbuf[idx])
-          zbuf[idx] = z;
+        if (depthMetric > zbuf[idx])
+          zbuf[idx] = depthMetric;
       }
     }
   }
@@ -430,7 +433,7 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW
   if (ix < 0 || ix >= zW || iy < 0 || iy >= zH)
     return true;
 
-  // Conservative edge-friendly test: use the max depth in a 3x3 neighborhood
+  // Conservative edge-friendly test: use the nearest depth metric in a 3x3 neighborhood
   // to avoid falsely hiding boundary lines at low z-buffer resolutions.
   double neighborhoodMax = -Double.MAX_VALUE;
   for (int oy = -1; oy <= 1; oy++)
@@ -450,8 +453,30 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW
   if (neighborhoodMax == -Double.MAX_VALUE)
     return true;
 
-  double effectiveBias = Math.max((double)depthBias, 0.0025 * z);
-  return z <= neighborhoodMax + effectiveBias;
+  double zd = (double)z;
+  double effectiveBiasZ = Math.max((double)depthBias, 0.0025 * zd);
+  double sampleMetric = depthMetricFromZ(zd);
+  double metricBias = depthMetricBiasFromZ(zd, effectiveBiasZ);
+  return sampleMetric >= neighborhoodMax - metricBias;
+}
+
+double depthMetricFromZ(double z)
+{
+  double safeZ = Math.max(1e-9, z);
+  if (data.occlusion.use_projection_depth_metric && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
+    return 1.0 / safeZ;
+
+  // Legacy metric and ortho: smaller z means nearer. Negate to keep "nearer is larger" ordering.
+  return -safeZ;
+}
+
+double depthMetricBiasFromZ(double z, double biasZ)
+{
+  double safeZ = Math.max(1e-9, z);
+  if (data.occlusion.use_projection_depth_metric && data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
+    return biasZ / (safeZ * safeZ);
+
+  return biasZ;
 }
 
 
