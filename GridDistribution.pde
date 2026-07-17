@@ -10,7 +10,7 @@ class GridDistributionData extends MeshDistributionData
   float box_height = 120;
 
   @Override
-  void createMeshes(ArrayList<Mesh> out_meshes)
+  void createMeshes(ArrayList<Mesh> out_meshes, int random_seed)
   {
     out_meshes.clear();
 

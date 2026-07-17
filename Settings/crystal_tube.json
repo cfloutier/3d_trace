@@ -1,0 +1,54 @@
+{
+  "Occlusion": {
+    "sample_step_px": 1.25,
+    "min_visible_segment_px": 5.666666507720947,
+    "depth_bias": 0.3499999940395355,
+    "enabled": true,
+    "zbuffer_scale": 1.4200000762939453
+  },
+  "Style": {
+    "backgroundColor": -16777216,
+    "lineColor": -1,
+    "lineWidth": 1.0833333730697632
+  },
+  "Page": {
+    "clipping": true,
+    "clip_width": 1186.666748046875,
+    "margin": 0,
+    "clip_height": 933.3333129882812,
+    "paper_format": 2,
+    "global_scale": 1
+  },
+  "Camera": {
+    "target_x": -37.79576110839844,
+    "target_distance": 687.1578979492188,
+    "target_y": -169.0797576904297,
+    "focal_distance": 1177.666748046875,
+    "target_z": 75.35742950439453,
+    "projection_mode": 1,
+    "ortho_zoom": 1,
+    "pitch": -1.5657963752746582,
+    "fov": 120,
+    "yaw": 1.5498526096343994
+  },
+  "Boxes": {
+    "random_seed": 200000,
+    "Tube": {
+      "spacing": 34.69999694824219,
+      "radial_count": 137,
+      "base_y_min": -1240,
+      "radius_max": 1072.4000244140625,
+      "base_y_max": 1853.33349609375,
+      "radius_min": 184.3000030517578,
+      "box_length_max": 1509.13330078125,
+      "levels": 41,
+      "box_length_min": 686.6000366210938
+    },
+    "Grid": {
+      "spacing": 90,
+      "box_height": 120,
+      "count": 400
+    },
+    "distribution_mode": 1
+  }
+}

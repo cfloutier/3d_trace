@@ -7,7 +7,7 @@ abstract class MeshDistributionData extends GenericData
     super(chapter_name);
   }
 
-  abstract void createMeshes(ArrayList<Mesh> out_meshes);
+  abstract void createMeshes(ArrayList<Mesh> out_meshes, int random_seed);
 }
 
 class DataBoxes extends GenericData
@@ -16,6 +16,7 @@ class DataBoxes extends GenericData
   static final int MODE_TUBE = 1;
 
   int distribution_mode = MODE_GRID;
+  int random_seed = 1;
 
   GridDistributionData grid = new GridDistributionData();
   TubeDistributionData tube = new TubeDistributionData();
@@ -30,9 +31,9 @@ class DataBoxes extends GenericData
   void createMeshes(ArrayList<Mesh> out_meshes)
   {
     if (distribution_mode == MODE_TUBE)
-      tube.createMeshes(out_meshes);
+      tube.createMeshes(out_meshes, random_seed);
     else
-      grid.createMeshes(out_meshes);
+      grid.createMeshes(out_meshes, random_seed);
   }
 
   void LoadJson(JSONObject src)
@@ -40,6 +41,7 @@ class DataBoxes extends GenericData
     if (src == null) return;
 
     distribution_mode = src.getInt("distribution_mode", distribution_mode);
+    random_seed = src.getInt("random_seed", random_seed);
 
     JSONObject grid_json = src.getJSONObject(grid.chapter_name);
     JSONObject tube_json = src.getJSONObject(tube.chapter_name);
@@ -53,6 +55,7 @@ class DataBoxes extends GenericData
   {
     JSONObject dest = new JSONObject();
     dest.setInt("distribution_mode", distribution_mode);
+    dest.setInt("random_seed", random_seed);
     dest.setJSONObject(grid.chapter_name, grid.SaveJson());
     dest.setJSONObject(tube.chapter_name, tube.SaveJson());
     return dest;
@@ -63,6 +66,7 @@ class BoxesGUI extends GUIPanel
 {
   DataBoxes boxes;
   myRadioButton distribution_mode;
+  Slider random_seed;
 
   GridDistributionGUI grid_ui;
   TubeDistributionGUI tube_ui;
@@ -82,6 +86,7 @@ class BoxesGUI extends GUIPanel
     ArrayList<String> distribution_modes = new ArrayList<String>();
     distribution_modes.add("Grid");
     distribution_modes.add("Tube");
+    random_seed = addIntSlider("random_seed", "Random Seed", boxes, 0, 1000000);
     distribution_mode = addRadio("distribution_mode", distribution_modes);
 
     grid_ui.setupControls(this);
@@ -97,6 +102,9 @@ class BoxesGUI extends GUIPanel
 
   void setGUIValues()
   {
+    if ((int)random_seed.getValue() != boxes.random_seed)
+      random_seed.setValue(boxes.random_seed);
+
     if ((int)distribution_mode.getValue() != boxes.distribution_mode)
       distribution_mode.activate(boxes.distribution_mode);
 
@@ -107,6 +115,9 @@ class BoxesGUI extends GUIPanel
 
   void update_ui()
   {
+    if ((int)random_seed.getValue() != boxes.random_seed)
+      random_seed.setValue(boxes.random_seed);
+
     if ((int)distribution_mode.getValue() != boxes.distribution_mode)
       distribution_mode.activate(boxes.distribution_mode);
 
