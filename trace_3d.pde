@@ -222,12 +222,12 @@ void buildOccludedLinesFromBoxes()
 
   int zW = max(64, (int)(width * data.occlusion.zbuffer_scale));
   int zH = max(64, (int)(height * data.occlusion.zbuffer_scale));
-  float[] zbuf = new float[zW * zH];
-  for (int i = 0; i < zbuf.length; i++) zbuf[i] = Float.MAX_VALUE;
+  double[] zbuf = new double[zW * zH];
+  for (int i = 0; i < zbuf.length; i++) zbuf[i] = Double.MAX_VALUE;
 
   rasterizeTrianglesToDepthBuffer(triangles, zbuf, zW, zH, minX, maxX, minY, maxY);
 
-  int kept = emitVisibleEdgeSegments(edges, zbuf, zW, zH, minX, maxX, minY, maxY,
+  emitVisibleEdgeSegments(edges, zbuf, zW, zH, minX, maxX, minY, maxY,
     data.occlusion.sample_step_px,
     data.occlusion.depth_bias,
     data.occlusion.min_visible_segment_px,
@@ -259,7 +259,7 @@ float[] getOcclusionDomain()
 }
 
 
-void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, float[] zbuf,
+void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, double[] zbuf,
   int zW, int zH, float minX, float maxX, float minY, float maxY)
 {
   for (int i = 0; i < triangles.size(); i++)
@@ -269,41 +269,41 @@ void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, flo
     if (t.a.z <= 0 || t.b.z <= 0 || t.c.z <= 0)
       continue;
 
-    float x0 = mapToBufferX(t.a.x, minX, maxX, zW);
-    float y0 = mapToBufferY(t.a.y, minY, maxY, zH);
-    float x1 = mapToBufferX(t.b.x, minX, maxX, zW);
-    float y1 = mapToBufferY(t.b.y, minY, maxY, zH);
-    float x2 = mapToBufferX(t.c.x, minX, maxX, zW);
-    float y2 = mapToBufferY(t.c.y, minY, maxY, zH);
+    double x0 = mapToBufferX((double)t.a.x, (double)minX, (double)maxX, zW);
+    double y0 = mapToBufferY((double)t.a.y, (double)minY, (double)maxY, zH);
+    double x1 = mapToBufferX((double)t.b.x, (double)minX, (double)maxX, zW);
+    double y1 = mapToBufferY((double)t.b.y, (double)minY, (double)maxY, zH);
+    double x2 = mapToBufferX((double)t.c.x, (double)minX, (double)maxX, zW);
+    double y2 = mapToBufferY((double)t.c.y, (double)minY, (double)maxY, zH);
 
-    float area = edgeFunction(x0, y0, x1, y1, x2, y2);
-    if (abs(area) < 1e-9)
+    double area = edgeFunctionD(x0, y0, x1, y1, x2, y2);
+    if (Math.abs(area) < 1e-12)
       continue;
 
-    int minPx = max(0, (int)floor(min(x0, min(x1, x2))));
-    int maxPx = min(zW - 1, (int)ceil(max(x0, max(x1, x2))));
-    int minPy = max(0, (int)floor(min(y0, min(y1, y2))));
-    int maxPy = min(zH - 1, (int)ceil(max(y0, max(y1, y2))));
+    int minPx = Math.max(0, (int)Math.floor(Math.min(x0, Math.min(x1, x2))));
+    int maxPx = Math.min(zW - 1, (int)Math.ceil(Math.max(x0, Math.max(x1, x2))));
+    int minPy = Math.max(0, (int)Math.floor(Math.min(y0, Math.min(y1, y2))));
+    int maxPy = Math.min(zH - 1, (int)Math.ceil(Math.max(y0, Math.max(y1, y2))));
 
     for (int py = minPy; py <= maxPy; py++)
     {
-      float cy = py + 0.5;
+      double cy = py + 0.5;
       for (int px = minPx; px <= maxPx; px++)
       {
-        float cx = px + 0.5;
+        double cx = px + 0.5;
 
-        float w0 = edgeFunction(x1, y1, x2, y2, cx, cy) / area;
-        float w1 = edgeFunction(x2, y2, x0, y0, cx, cy) / area;
-        float w2 = edgeFunction(x0, y0, x1, y1, cx, cy) / area;
+        double w0 = edgeFunctionD(x1, y1, x2, y2, cx, cy) / area;
+        double w1 = edgeFunctionD(x2, y2, x0, y0, cx, cy) / area;
+        double w2 = edgeFunctionD(x0, y0, x1, y1, cx, cy) / area;
 
         boolean inside = (w0 >= 0 && w1 >= 0 && w2 >= 0) || (w0 <= 0 && w1 <= 0 && w2 <= 0);
         if (!inside)
           continue;
 
-        float z;
+        double z;
         if (data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
         {
-          float invz = w0 * t.a.invz + w1 * t.b.invz + w2 * t.c.invz;
+          double invz = w0 * t.a.invz + w1 * t.b.invz + w2 * t.c.invz;
           if (invz <= 1e-9)
             continue;
           z = 1.0 / invz;
@@ -324,7 +324,7 @@ void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, flo
 }
 
 
-int emitVisibleEdgeSegments(ArrayList<EdgeProjected> edges, float[] zbuf,
+int emitVisibleEdgeSegments(ArrayList<EdgeProjected> edges, double[] zbuf,
   int zW, int zH, float minX, float maxX, float minY, float maxY,
   float sampleStepPx, float depthBias, float minVisibleSegmentPx,
   PolylineGroup outGroup)
@@ -423,7 +423,7 @@ int emitVisibleEdgeSegments(ArrayList<EdgeProjected> edges, float[] zbuf,
 }
 
 
-boolean isVisibleAgainstDepth(float z, float sx, float sy, float[] zbuf, int zW, int zH, float depthBias)
+boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW, int zH, float depthBias)
 {
   int ix = (int)round(sx);
   int iy = (int)round(sy);
@@ -432,7 +432,7 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, float[] zbuf, int zW,
 
   // Conservative edge-friendly test: use the max depth in a 3x3 neighborhood
   // to avoid falsely hiding boundary lines at low z-buffer resolutions.
-  float neighborhoodMax = -Float.MAX_VALUE;
+  double neighborhoodMax = -Double.MAX_VALUE;
   for (int oy = -1; oy <= 1; oy++)
   {
     int py = iy + oy;
@@ -441,16 +441,16 @@ boolean isVisibleAgainstDepth(float z, float sx, float sy, float[] zbuf, int zW,
     {
       int px = ix + ox;
       if (px < 0 || px >= zW) continue;
-      float zv = zbuf[px + py * zW];
-      if (zv < Float.MAX_VALUE && zv > neighborhoodMax)
+      double zv = zbuf[px + py * zW];
+      if (zv < Double.MAX_VALUE && zv > neighborhoodMax)
         neighborhoodMax = zv;
     }
   }
 
-  if (neighborhoodMax == -Float.MAX_VALUE)
+  if (neighborhoodMax == -Double.MAX_VALUE)
     return true;
 
-  float effectiveBias = max(depthBias, 0.0025 * z);
+  double effectiveBias = Math.max((double)depthBias, 0.0025 * z);
   return z <= neighborhoodMax + effectiveBias;
 }
 
@@ -460,12 +460,27 @@ float mapToBufferX(float x, float minX, float maxX, int zW)
   return (x - minX) / max(1e-6, maxX - minX) * (zW - 1);
 }
 
+double mapToBufferX(double x, double minX, double maxX, int zW)
+{
+  return (x - minX) / Math.max(1e-12, maxX - minX) * (zW - 1);
+}
+
 float mapToBufferY(float y, float minY, float maxY, int zH)
 {
   return (y - minY) / max(1e-6, maxY - minY) * (zH - 1);
 }
 
+double mapToBufferY(double y, double minY, double maxY, int zH)
+{
+  return (y - minY) / Math.max(1e-12, maxY - minY) * (zH - 1);
+}
+
 float edgeFunction(float ax, float ay, float bx, float by, float px, float py)
+{
+  return (px - ax) * (by - ay) - (py - ay) * (bx - ax);
+}
+
+double edgeFunctionD(double ax, double ay, double bx, double by, double px, double py)
 {
   return (px - ax) * (by - ay) - (py - ay) * (bx - ax);
 }
