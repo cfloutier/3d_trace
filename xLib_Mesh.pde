@@ -26,12 +26,12 @@ class TriangleProjected
 
 abstract class Mesh
 {
-  abstract void addWireframe(PolylineGroup group, CameraData camera);
+  abstract void addWireframe(PolylineGroup group, CameraProjector3D camera);
 
   abstract void appendProjectedOcclusionGeometry(
     ArrayList<EdgeProjected> edges,
     ArrayList<TriangleProjected> triangles,
-    CameraData camera,
+    CameraProjector3D camera,
     CameraFrame frame
   );
 }

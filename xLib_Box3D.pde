@@ -1,4 +1,4 @@
-Polyline makeProjectedEdge(PVector a, PVector b, CameraData camera)
+Polyline makeProjectedEdge(PVector a, PVector b, CameraProjector3D camera)
 {
   Polyline edge = new Polyline();
   edge.addPoint(camera.projectPoint(a));
@@ -118,7 +118,7 @@ class Box3D extends Mesh
     return new PVector(point.x * c - point.y * s, point.x * s + point.y * c, point.z);
   }
 
-  ProjectedPoint[] getProjectedVertices(CameraData camera, CameraFrame frame)
+  ProjectedPoint[] getProjectedVertices(CameraProjector3D camera, CameraFrame frame)
   {
     PVector[] vertices = getVertices();
     ProjectedPoint[] projected = new ProjectedPoint[vertices.length];
@@ -130,7 +130,7 @@ class Box3D extends Mesh
   }
 
   @Override
-  void addWireframe(PolylineGroup group, CameraData camera)
+  void addWireframe(PolylineGroup group, CameraProjector3D camera)
   {
     PVector[] vertices = getVertices();
 
@@ -144,7 +144,7 @@ class Box3D extends Mesh
   void appendProjectedOcclusionGeometry(
     ArrayList<EdgeProjected> edges,
     ArrayList<TriangleProjected> triangles,
-    CameraData camera,
+    CameraProjector3D camera,
     CameraFrame frame)
   {
     ProjectedPoint[] p = getProjectedVertices(camera, frame);
@@ -158,7 +158,7 @@ class Box3D extends Mesh
 }
 
 
-void addBoxWireframe(PolylineGroup group, CameraData camera, float center_x, float center_y, float center_z, float size_x, float size_y, float size_z)
+void addBoxWireframe(PolylineGroup group, CameraProjector3D camera, float center_x, float center_y, float center_z, float size_x, float size_y, float size_z)
 {
   Box3D box = new Box3D(center_x, center_y, center_z, size_x, size_y, size_z);
   box.addWireframe(group, camera);
