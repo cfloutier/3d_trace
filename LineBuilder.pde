@@ -1,6 +1,31 @@
 class LineBuilder
 {
+  static final int STAGE_IDLE = 0;
+  static final int STAGE_COLLECT = 1;
+  static final int STAGE_RASTERIZE = 2;
+  static final int STAGE_EMIT = 3;
+
   BoxGridData data;
+  PolylineGroup previewGroup = new PolylineGroup();
+
+  ArrayList<Mesh> sourceMeshes = null;
+  PolylineGroup finalGroup = null;
+  ArrayList<EdgeProjected> edges = new ArrayList<EdgeProjected>();
+  ArrayList<TriangleProjected> triangles = new ArrayList<TriangleProjected>();
+
+  CameraFrame frame = null;
+  double[] zbuf = null;
+  float minX, maxX, minY, maxY;
+  int zW = 0;
+  int zH = 0;
+
+  int stage = STAGE_IDLE;
+  int meshIndex = 0;
+  int triangleIndex = 0;
+  int edgeIndex = 0;
+  boolean busy = false;
+  boolean occlusionMode = false;
+  long startNs = 0;
   int last_occlusion_debug_ms = -100000;
 
   LineBuilder(BoxGridData data)
@@ -8,55 +33,124 @@ class LineBuilder
     this.data = data;
   }
 
-  void buildLinesFromMeshes(ArrayList<Mesh> meshList, PolylineGroup outGroup)
+  void requestBuild(ArrayList<Mesh> meshList, PolylineGroup outGroup)
   {
+    sourceMeshes = meshList;
+    finalGroup = outGroup;
+    startNs = System.nanoTime();
+
     if (data.occlusion.enabled)
     {
-      buildOccludedLinesFromMeshes(meshList, outGroup);
+      previewGroup.clear();
+      buildPreviewWireframe();
+      beginOcclusionBuild();
       return;
     }
 
-    outGroup.clear();
-    for (int i = 0; i < meshList.size(); i++)
-      meshList.get(i).addWireframe(outGroup, data.camera);
+    stopBuild();
+    finalGroup.clear();
+    for (int i = 0; i < sourceMeshes.size(); i++)
+      sourceMeshes.get(i).addWireframe(finalGroup, data.camera);
   }
 
-  void buildOccludedLinesFromMeshes(ArrayList<Mesh> meshList, PolylineGroup outGroup)
+  void buildPreviewWireframe()
   {
-    outGroup.clear();
+    previewGroup.clear();
+    if (sourceMeshes == null) return;
 
-    if (meshList.size() == 0)
-      return;
+    for (int i = 0; i < sourceMeshes.size(); i++)
+      sourceMeshes.get(i).addWireframe(previewGroup, data.camera);
+  }
 
-    CameraFrame frame = data.camera.buildFrame();
+  void beginOcclusionBuild()
+  {
+    busy = true;
+    occlusionMode = true;
+    stage = STAGE_COLLECT;
+    meshIndex = 0;
+    triangleIndex = 0;
+    edgeIndex = 0;
+    edges.clear();
+    triangles.clear();
+    frame = data.camera.buildFrame();
+    zbuf = null;
+  }
 
-    ArrayList<EdgeProjected> edges = new ArrayList<EdgeProjected>();
-    ArrayList<TriangleProjected> triangles = new ArrayList<TriangleProjected>();
+  void stopBuild()
+  {
+    busy = false;
+    occlusionMode = false;
+    stage = STAGE_IDLE;
+  }
 
-    for (int i = 0; i < meshList.size(); i++)
-      meshList.get(i).appendProjectedOcclusionGeometry(edges, triangles, data.camera, frame);
+  boolean update(float timeBudgetSeconds)
+  {
+    if (!busy || !occlusionMode || sourceMeshes == null)
+      return false;
 
+    long deadlineNs = System.nanoTime() + (long)(max(0.01, timeBudgetSeconds) * 1000000000.0);
+
+    while (busy && System.nanoTime() < deadlineNs)
+    {
+      if (stage == STAGE_COLLECT)
+      {
+        if (meshIndex >= sourceMeshes.size())
+        {
+          prepareRasterization();
+          stage = STAGE_RASTERIZE;
+          continue;
+        }
+
+        sourceMeshes.get(meshIndex).appendProjectedOcclusionGeometry(edges, triangles, data.camera, frame);
+        meshIndex++;
+      }
+      else if (stage == STAGE_RASTERIZE)
+      {
+        if (triangleIndex >= triangles.size())
+        {
+          stage = STAGE_EMIT;
+          finalGroup.clear();
+          edgeIndex = 0;
+          continue;
+        }
+
+        triangleIndex = rasterizeTrianglesToDepthBufferRange(triangleIndex, deadlineNs);
+      }
+      else if (stage == STAGE_EMIT)
+      {
+        if (edgeIndex >= edges.size())
+        {
+          previewGroup.clear();
+          stopBuild();
+          if (millis() - last_occlusion_debug_ms > 250)
+            last_occlusion_debug_ms = millis();
+          return true;
+        }
+
+        edgeIndex = emitVisibleEdgeSegmentsRange(edgeIndex, deadlineNs, finalGroup);
+      }
+      else
+      {
+        break;
+      }
+    }
+
+    return !busy;
+  }
+
+  void prepareRasterization()
+  {
     float[] domain = getOcclusionDomain();
-    float minX = domain[0];
-    float maxX = domain[1];
-    float minY = domain[2];
-    float maxY = domain[3];
+    minX = domain[0];
+    maxX = domain[1];
+    minY = domain[2];
+    maxY = domain[3];
 
-    int zW = max(64, (int)(width * data.occlusion.zbuffer_scale));
-    int zH = max(64, (int)(height * data.occlusion.zbuffer_scale));
-    double[] zbuf = new double[zW * zH];
-    for (int i = 0; i < zbuf.length; i++) zbuf[i] = Double.MAX_VALUE;
-
-    rasterizeTrianglesToDepthBuffer(triangles, zbuf, zW, zH, minX, maxX, minY, maxY);
-
-    emitVisibleEdgeSegments(edges, zbuf, zW, zH, minX, maxX, minY, maxY,
-      data.occlusion.sample_step_px,
-      data.occlusion.depth_bias,
-      data.occlusion.min_visible_segment_px,
-      outGroup);
-
-    if (millis() - last_occlusion_debug_ms > 250)
-      last_occlusion_debug_ms = millis();
+    zW = max(64, (int)(width * data.occlusion.zbuffer_scale));
+    zH = max(64, (int)(height * data.occlusion.zbuffer_scale));
+    zbuf = new double[zW * zH];
+    for (int i = 0; i < zbuf.length; i++)
+      zbuf[i] = Double.MAX_VALUE;
   }
 
   float[] getOcclusionDomain()
@@ -74,11 +168,13 @@ class LineBuilder
     return new float[] { -halfW, halfW, -halfH, halfH };
   }
 
-  void rasterizeTrianglesToDepthBuffer(ArrayList<TriangleProjected> triangles, double[] zbuf,
-    int zW, int zH, float minX, float maxX, float minY, float maxY)
+  int rasterizeTrianglesToDepthBufferRange(int startIndex, long deadlineNs)
   {
-    for (int i = 0; i < triangles.size(); i++)
+    for (int i = startIndex; i < triangles.size(); i++)
     {
+      if (System.nanoTime() >= deadlineNs)
+        return i;
+
       TriangleProjected t = triangles.get(i);
 
       if (t.a.z <= 0 || t.b.z <= 0 || t.c.z <= 0)
@@ -105,6 +201,9 @@ class LineBuilder
         double cy = py + 0.5;
         for (int px = minPx; px <= maxPx; px++)
         {
+          if (System.nanoTime() >= deadlineNs)
+            return i;
+
           double cx = px + 0.5;
 
           double w0 = edgeFunctionD(x1, y1, x2, y2, cx, cy) / area;
@@ -136,18 +235,19 @@ class LineBuilder
         }
       }
     }
+
+    return triangles.size();
   }
 
-  int emitVisibleEdgeSegments(ArrayList<EdgeProjected> edges, double[] zbuf,
-    int zW, int zH, float minX, float maxX, float minY, float maxY,
-    float sampleStepPx, float depthBias, float minVisibleSegmentPx,
-    PolylineGroup outGroup)
+  int emitVisibleEdgeSegmentsRange(int startIndex, long deadlineNs, PolylineGroup outGroup)
   {
-    int kept = 0;
-    float stepPx = max(0.25, sampleStepPx);
+    float stepPx = max(0.25, data.occlusion.sample_step_px);
 
-    for (int i = 0; i < edges.size(); i++)
+    for (int i = startIndex; i < edges.size(); i++)
     {
+      if (System.nanoTime() >= deadlineNs)
+        return i;
+
       EdgeProjected e = edges.get(i);
       if (e.a.z <= 0 || e.b.z <= 0)
         continue;
@@ -171,6 +271,9 @@ class LineBuilder
 
       for (int s = 0; s <= steps; s++)
       {
+        if (System.nanoTime() >= deadlineNs)
+          return i;
+
         float t = s / (float)steps;
 
         float x = lerp(e.a.x, e.b.x, t);
@@ -178,7 +281,6 @@ class LineBuilder
         float z;
         if (data.camera.projection_mode == CameraData.PROJECTION_PERSPECTIVE)
         {
-          // Perspective-correct depth along projected edges to avoid false mid-segment occlusion.
           float invz = lerp(e.a.invz, e.b.invz, t);
           if (invz <= 1e-9)
             continue;
@@ -192,7 +294,7 @@ class LineBuilder
         float sx = mapToBufferX(x, minX, maxX, zW);
         float sy = mapToBufferY(y, minY, maxY, zH);
 
-        boolean visible = isVisibleAgainstDepth(z, sx, sy, zbuf, zW, zH, depthBias);
+        boolean visible = isVisibleAgainstDepth(z, sx, sy, zbuf, zW, zH, data.occlusion.depth_bias);
 
         if (visible)
         {
@@ -218,16 +320,14 @@ class LineBuilder
         {
           hiddenStreak++;
 
-          // Ignore isolated hidden samples to avoid dashed cracks.
           if (hiddenStreak >= 2)
           {
-            if (dist(runStartSX, runStartSY, runEndSX, runEndSY) >= minVisibleSegmentPx)
+            if (dist(runStartSX, runStartSY, runEndSX, runEndSY) >= data.occlusion.min_visible_segment_px)
             {
               Polyline line = new Polyline();
               line.addPoint(runStart2D);
               line.addPoint(runEnd2D);
               outGroup.add(line);
-              kept++;
             }
             runVisible = false;
             hiddenStreak = 0;
@@ -235,17 +335,96 @@ class LineBuilder
         }
       }
 
-      if (runVisible && dist(runStartSX, runStartSY, runEndSX, runEndSY) >= minVisibleSegmentPx)
+      if (runVisible && dist(runStartSX, runStartSY, runEndSX, runEndSY) >= data.occlusion.min_visible_segment_px)
       {
         Polyline line = new Polyline();
         line.addPoint(runStart2D);
         line.addPoint(runEnd2D);
         outGroup.add(line);
-        kept++;
       }
     }
 
-    return kept;
+    return edges.size();
+  }
+
+  void draw(boolean clipping, float clipWidth, float clipHeight)
+  {
+    pushStyle();
+    int c = data.style.lineColor.col;
+    int previewAlpha = 128;
+    current_graphics.stroke(red(c), green(c), blue(c), (busy && occlusionMode) ? previewAlpha : 255);
+
+    if (busy && occlusionMode && previewGroup.size() > 0)
+      previewGroup.draw(clipping, clipWidth, clipHeight);
+    else if (finalGroup != null)
+      finalGroup.draw(clipping, clipWidth, clipHeight);
+
+    popStyle();
+  }
+
+  int getDisplayLineCount()
+  {
+    if (busy && occlusionMode)
+      return previewGroup.size();
+
+    return (finalGroup != null) ? finalGroup.size() : 0;
+  }
+
+  BoundingBox getDisplayBoundingBox(boolean clipping, float clipWidth, float clipHeight)
+  {
+    if (busy && occlusionMode && previewGroup.size() > 0)
+      return previewGroup.getBoundingBox(clipping, clipWidth, clipHeight);
+
+    if (finalGroup != null)
+      return finalGroup.getBoundingBox(clipping, clipWidth, clipHeight);
+
+    return new BoundingBox();
+  }
+
+  boolean isBusy()
+  {
+    return busy;
+  }
+
+  boolean isOcclusionBuilding()
+  {
+    return busy && occlusionMode;
+  }
+
+  float getProgress01()
+  {
+    if (!busy || sourceMeshes == null || sourceMeshes.size() == 0)
+      return 1.0;
+
+    float meshCount = max(1, sourceMeshes.size());
+    if (stage == STAGE_COLLECT)
+      return 0.33 * (meshIndex / meshCount);
+    if (stage == STAGE_RASTERIZE)
+      return 0.33 + 0.34 * (triangles.size() <= 0 ? 0 : triangleIndex / (float)max(1, triangles.size()));
+    if (stage == STAGE_EMIT)
+      return 0.67 + 0.33 * (edges.size() <= 0 ? 0 : edgeIndex / (float)max(1, edges.size()));
+
+    return 0.0;
+  }
+
+  String getStatusText()
+  {
+    if (!busy)
+      return "idle";
+
+    if (stage == STAGE_COLLECT)
+      return "collecting";
+    if (stage == STAGE_RASTERIZE)
+      return "rasterizing";
+    if (stage == STAGE_EMIT)
+      return "emitting";
+
+    return "working";
+  }
+
+  float getElapsedMs()
+  {
+    return (System.nanoTime() - startNs) / 1000000.0;
   }
 
   boolean isVisibleAgainstDepth(float z, float sx, float sy, double[] zbuf, int zW, int zH, float depthBias)

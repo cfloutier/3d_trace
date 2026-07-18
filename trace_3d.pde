@@ -14,6 +14,7 @@ PolylineGroup lineGroup = new PolylineGroup();
 LineBuilder lineBuilder;
 
 float hud_last_lines_gen_ms = 0;
+float hud_last_render_ms = 0;
 
 void setup()
 {
@@ -29,6 +30,10 @@ void setup()
   data.LoadSettings("./Settings/default.json");
   dataGui.setGUIValues();
   lineBuilder = new LineBuilder(data);
+  buildBoxes();
+  lineBuilder.requestBuild(meshList, lineGroup);
+  if (!lineBuilder.isBusy())
+    hud_last_lines_gen_ms = lineBuilder.getElapsedMs();
 
   file_ui.export_group = lineGroup;  // enable direct SVG export
 }
@@ -63,13 +68,16 @@ void draw()
 
   if (boxes_changed || camera_changed || occlusion_changed)
   {
-    long lines_start_ns = System.nanoTime();
-    lineBuilder.buildLinesFromMeshes(meshList, lineGroup);
-    hud_last_lines_gen_ms = (System.nanoTime() - lines_start_ns) / 1000000.0;
+    lineBuilder.requestBuild(meshList, lineGroup);
+    if (!lineBuilder.isBusy())
+      hud_last_lines_gen_ms = lineBuilder.getElapsedMs();
   }
 
+  if (lineBuilder.update(0.2f))
+    hud_last_lines_gen_ms = lineBuilder.getElapsedMs();
+
   if (boxes_changed || camera_changed || occlusion_changed || page_changed)
-    file_ui.updateExportScale(lineGroup.getBoundingBox(data.page.clipping, data.page.clip_width, data.page.clip_height));
+    file_ui.updateExportScale(lineBuilder.getDisplayBoundingBox(data.page.clipping, data.page.clip_width, data.page.clip_height));
 
   dataGui.update_ui();
   data.reset_all_changes();
@@ -82,9 +90,11 @@ void draw()
   //                         data.page.clip_width, data.page.clip_height);
   //}
 
-  lineGroup.draw(data.page.clipping, data.page.clip_width, data.page.clip_height);
+  long render_start_ns = System.nanoTime();
+  lineBuilder.draw(data.page.clipping, data.page.clip_width, data.page.clip_height);
 
   end_draw();
+  hud_last_render_ms = (System.nanoTime() - render_start_ns) / 1000000.0;
 
   dataGui.draw();
   drawHud();
@@ -95,8 +105,14 @@ void drawHud()
   if (_record)
     return;
 
-  String hud_text = "Lines: " + lineGroup.size()
+  String hud_text = "Lines: " + lineBuilder.getDisplayLineCount()
+    + (lineBuilder.isOcclusionBuilding() ? " | Occlusion: " + lineBuilder.getStatusText() + " " + int(lineBuilder.getProgress01() * 100) + "%" : "")
     + " | Lines gen: " + nf(hud_last_lines_gen_ms, 1, 2) + " ms";
+
+  hud_text += " | Render: " + nf(hud_last_render_ms, 1, 2) + " ms";
+
+  if (lineBuilder.isOcclusionBuilding())
+    hud_text += " | preview";
 
   pushStyle();
   textAlign(LEFT, BOTTOM);

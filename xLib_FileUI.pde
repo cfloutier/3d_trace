@@ -205,6 +205,11 @@ class FileGUI extends GUIPanel
 
   void ExportSVG()
   {
+    if (lineBuilder != null && lineBuilder.isOcclusionBuilding()) {
+      println("[SVG direct] Export refused: occlusion is still computing.");
+      return;
+    }
+
     boolean use_shapes = export_shapes != null && export_shapes.totalCount() > 0;
     boolean use_group  = export_group  != null && export_group.size()  > 0;
 
