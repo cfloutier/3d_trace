@@ -106,7 +106,7 @@ void drawHud()
     return;
 
   String hud_text = "Lines: " + lineBuilder.getDisplayLineCount()
-    + (lineBuilder.isOcclusionBuilding() ? " | Occlusion: " + lineBuilder.getStatusText() + " " + int(lineBuilder.getProgress01() * 100) + "%" : "")
+    + (lineBuilder.isOcclusionBuilding() ? " | Occlusion: " + lineBuilder.getStatusText() : "")
     + " | Lines gen: " + nf(hud_last_lines_gen_ms, 1, 2) + " ms";
 
   hud_text += " | Render: " + nf(hud_last_render_ms, 1, 2) + " ms";

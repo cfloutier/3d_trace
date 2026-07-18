@@ -351,7 +351,7 @@ class LineBuilder
   {
     pushStyle();
     int c = data.style.lineColor.col;
-    int previewAlpha = 128;
+    int previewAlpha = 50;
     current_graphics.stroke(red(c), green(c), blue(c), (busy && occlusionMode) ? previewAlpha : 255);
 
     if (busy && occlusionMode && previewGroup.size() > 0)
@@ -391,6 +391,44 @@ class LineBuilder
     return busy && occlusionMode;
   }
 
+  int getPhaseIndex()
+  {
+    if (stage == STAGE_COLLECT)
+      return 1;
+    if (stage == STAGE_RASTERIZE)
+      return 2;
+    if (stage == STAGE_EMIT)
+      return 3;
+    return 0;
+  }
+
+  String getPhaseName()
+  {
+    if (stage == STAGE_COLLECT)
+      return "collecting";
+    if (stage == STAGE_RASTERIZE)
+      return "rasterizing";
+    if (stage == STAGE_EMIT)
+      return "emitting";
+    return "idle";
+  }
+
+  float getPhaseProgress01()
+  {
+    if (!busy || sourceMeshes == null || sourceMeshes.size() == 0)
+      return 1.0;
+
+    float meshCount = max(1, sourceMeshes.size());
+    if (stage == STAGE_COLLECT)
+      return meshIndex / meshCount;
+    if (stage == STAGE_RASTERIZE)
+      return (triangles.size() <= 0) ? 0 : triangleIndex / (float)max(1, triangles.size());
+    if (stage == STAGE_EMIT)
+      return (edges.size() <= 0) ? 0 : edgeIndex / (float)max(1, edges.size());
+
+    return 0.0;
+  }
+
   float getProgress01()
   {
     if (!busy || sourceMeshes == null || sourceMeshes.size() == 0)
@@ -412,14 +450,7 @@ class LineBuilder
     if (!busy)
       return "idle";
 
-    if (stage == STAGE_COLLECT)
-      return "collecting";
-    if (stage == STAGE_RASTERIZE)
-      return "rasterizing";
-    if (stage == STAGE_EMIT)
-      return "emitting";
-
-    return "working";
+    return getPhaseIndex() + "/3 " + getPhaseName() + " " + int(getPhaseProgress01() * 100) + "%";
   }
 
   float getElapsedMs()
